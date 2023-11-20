@@ -1,0 +1,531 @@
+---
+title: "FIT3152 Assignment 1"
+subtitle: "Muhammed Naveed Hassan (32799047)"
+output: html_notebook
+---
+
+```{r, include=FALSE}
+getwd()
+setwd('C:\\Users\\navee\\Desktop\\FIT3152\\A1')
+library(dplyr)
+```
+
+# **Report** 
+```{r,include=FALSE}
+rm(list = ls())
+set.seed(32799047) # 32799047 (student ID)
+cvbase = read.csv("PsyCoronaBaselineExtract.csv")
+cvbase <- cvbase[sample(nrow(cvbase), 40000), ] # 40000 rows
+```
+
+### We use the head function to double check if the data is correctly read **(Table 1.1)**
+```{r, include=FALSE}
+head(cvbase)
+```
+# **Q1**
+### **Q1a Descriptive Analysis**
+
+### Dimensions:
+#### Found using dim() function
+```{r}
+dim(cvbase)
+```
+#### Dimensions are 40000 rows of data with 54 variables (40000 x 54)
+
+```{r, include=FALSE}
+str(cvbase)
+```
+#### All data types are of int type except for the country name (column name: "coded_country") which is of datatype chr **(Table 1.2)**
+
+
+### Summary:
+
+```{r, include=FALSE}
+summary(cvbase)
+```
+#### The output shows the summary of the dataset, including the distribution of all numerical attributes, which gives us information on the statistics of every relevant column using the mean, median and standard deviation. **(Table 1.3)**
+
+#### We can also see the number of missing values for every column of the dataset and it can be simply observed that the columns employstatus 1-10 has many missing values. **(Table 1.3)**
+
+### Analysis of Numerical Attributes:
+
+```{r, echo=FALSE}
+# Seperate the attributes to make visualization easier 
+affect <- cvbase %>% select(c(affAnx, affBor, affCalm, affContent, affDepr, affEnerg, affExc, affNerv, affExh, affInsp ,affRel))
+boxplot(affect, las = 2, main="Affect")
+```
+
+```{r, echo=FALSE}
+# Seperate the attributes to make visualization easier 
+c19 <- cvbase %>% select(c(c19NormShould, c19NormDo, c19IsStrict, c19IsPunish, c19IsOrg))
+boxplot(c19, las = 2, main="Corona Community
+Injunctive norms")
+```
+#### Distribution of Numerical Attributes: The boxplots provide a clear visual representation of the distribution of numerical data. They compare the distribution of numerical attributes across attributes. They are useful for identifying differences in central tendency, variability, and outliers between groups.
+#### Boxplots of all numerical attributes **(Image 1.5-1.13)**
+
+
+### **Q1b Preprocessing and data manipulation**
+
+#### Data cleaning: removing and fixing any missing or inconsistent data.
+
+#### Data reduction: removing irrelevant or redundant data to improve analysis performance.
+
+#### Data sampling: selecting a random representative subset of data from the large dataset for analysis.
+
+#### Merging columns: (eg. employstatus_x) into 1 single column.
+```{r}
+cvbase2 = cvbase 
+#Merging the employstatus columns
+cvbase2[21:30][is.na(cvbase[21:30])] <- 0
+cvbase2$employstatus <- 0
+tmp <- cvbase2[21:30]==1
+cvbase2$employstatus[ row(tmp)[tmp] ] <- col(tmp)[tmp]
+cvbase2 = cvbase2[, -21:-30]
+employ_status <- cvbase2 %>% select(c(employstatus))
+```
+#### It can be seen in **Image 1.14** the numerical distribution of the new merged column of employment status.
+
+
+#### Replace all NA Values with mean.
+```{r}
+cvbase2 <- cvbase2 %>%
+  mutate_if(is.numeric, ~ifelse(is.na(.), mean(., na.rm = TRUE), .))
+```
+
+
+#### **Table 1.4** shows the summary of the cleaned and manipulated dataset
+#### We can also see the number of missing values for every column of the dataset is now 0 as we have replaced all NA values with its mean. 
+```{r, include=FALSE}
+summary(cvbase2)
+```
+
+
+
+# **Q2**
+### **Q2a Focus Country: Hong Kong S.A.R.**
+#### Filter out the countries other Hong Kong S.A.R.
+
+#### First check all the unique countries in the dataset so that there aren't different names for the same country **(Table 2.1)**
+```{r, include=FALSE}
+unique(cvbase2$coded_country)
+```
+### Group by and Tally
+#### We group the data by countries and tally **(Table 2.2)**
+#### From this we can see that there exists 197 rows of data for our focus country (Hong Kong S.A.R.)
+```{r, include = FALSE}
+#group the data by countries and tally
+group = cvbase2 %>% group_by(coded_country) %>%
+  tally()
+group
+```
+
+### Filter out by country name
+
+
+#### Assigned Hong Kong S.A.R. so will filter out accordingly
+```{r}
+#Filter Hong Kong S.A.R. Data
+hk_data <- subset(cvbase2, coded_country == "Hong Kong S.A.R.")
+#Filter All other countries Data
+other_data <- subset(cvbase2, coded_country != "Hong Kong S.A.R.")
+```
+
+#### Double check the dimensions to check if the data is filtered appropriately 
+```{r}
+dim(hk_data)
+```
+
+```{r, include=FALSE}
+#Summary of hong kong data
+summary(hk_data)
+```
+
+#### Comparison of Responses HK vs rest of world: As visualized below, most of the numerical attriutes of the participant responses are quite similar between Hong Kong S.A.R. and the rest of the world. A few notable differences can be seen in the following columns: 
+#### employ_status: Much hgher average in Hong Kong S.A.R. as compared to the rest of the world.
+#### Societal Discontent: Very different values in comparison to the rest of the world.
+#### Trust in Govt.: The rest of the world seems to trust the govt. more as compared to Hong Kong.
+
+```{r}
+#create boxplots of  all numerical attributes for Hong Kong S.A.R. and rest of the world
+hk <- hk_data %>% select(-c(coded_country))
+par(mar=c(5,4,4,2)+0.1)
+boxplot(hk, las = 2, main="Participant Responses in Hong Kong S.A.R.", xlab="Attributes")
+
+others <- other_data %>% select(-c(coded_country))
+par(mar=c(5,4,4,2)+0.1)
+boxplot(others, las = 2, main="Participant Responses Rest of the World", xlab="Attributes")
+```
+
+
+```{r}
+# Extract Mean and Standard Deviation from all columns of Hong Kong S.A.R. Data
+hk_means <- colMeans(hk, na.rm=TRUE)
+hk_sd <- apply(hk, 2, sd, na.rm=TRUE)
+
+# Extract Mean and Standard Deviation from all columns of Rest of The World Data
+other_means <- colMeans(others, na.rm=TRUE)
+other_sd <- apply(others, 2, sd, na.rm=TRUE)
+
+# Create a dataframe to provide easier visualization for comparison
+comparison <- data.frame(
+  hk_means = hk_means,
+  other_means = other_means,
+  hk_sd = hk_sd,
+  other_sd = other_sd
+)
+comparison
+```
+
+
+### **Q2b: Attributes predict pro-social attitudes**
+```{r, echo=TRUE, results='hide'}
+# Linear regression model to predict c19ProSo01 using the attributes for Hong Kong S.A.R. data
+hk_fit1 = lm(c19ProSo01~ affAnx+ affBor+ affCalm+ affContent+ affDepr+ affEnerg+ affExc+ affNerv+ affExh+ affInsp +affRel+ PLRAC19+ PLRAEco+ disc01+ disc02+ disc03+jbInsec01+ jbInsec02+ jbInsec03+ jbInsec04+ PFS01+PFS02+PFS03+ fail01+fail02+fail03+ happy+ lifeSat+ MLQ+ c19NormShould+ c19NormDo+ c19IsStrict+ c19IsPunish+ c19IsOrg+ trustGovCtry+ trustGovState+ gender+ age+employstatus, data = hk_data)
+```
+#### c19ProSo01: The attributes that are the best predictors are fail01, c19IsStrict, gender as seen by the Pr(>|t|) value and indicated by the * next to it. **(Table 2.3)**
+#### In this case, since the p-value is > 0.05, we cant reject the null hypothesis. Therefore, we can conclude that there is not enough evidence to support a significant relationship between the variables at the 5% significance level.
+
+```{r, echo=TRUE, results='hide'}
+# Linear regression model to predict c19ProSo02 using the attributes for Hong Kong S.A.R. data
+hk_fit2 = lm(c19ProSo02~ affAnx+ affBor+ affCalm+ affContent+ affDepr+ affEnerg+ affExc+ affNerv+ affExh+ affInsp +affRel+ PLRAC19+ PLRAEco+ disc01+ disc02+ disc03+jbInsec01+ jbInsec02+ jbInsec03+ jbInsec04+ PFS01+PFS02+PFS03+ fail01+fail02+fail03+ happy+ lifeSat+ MLQ+ c19NormShould+ c19NormDo+ c19IsStrict+ c19IsPunish+ c19IsOrg+ trustGovCtry+ trustGovState+ gender+ age+employstatus, data = hk_data)
+```
+#### c19ProSo02: The attributes that are the best predictors are PFS03, PFS01, fail01, trustGovState as seen by the Pr(>|t|) value and indicated by the * next to it.**(Table 2.4)**
+#### The  p-value is 0.006811, which is < 0.05 which suggests that there is significant evidence to reject the null hypothesis, hence concluding that the model is useful in predicting the response variable.
+
+
+```{r, echo=TRUE, results='hide'}
+# Linear regression model to predict c19ProSo03 using the attributes for Hong Kong S.A.R. data
+hk_fit3 = lm(c19ProSo01~ affAnx+ affBor+ affCalm+ affContent+ affDepr+ affEnerg+ affExc+ affNerv+ affExh+ affInsp +affRel+ PLRAC19+ PLRAEco+ disc01+ disc02+ disc03+jbInsec01+ jbInsec02+ jbInsec03+ jbInsec04+ PFS01+PFS02+PFS03+ fail01+fail02+fail03+ happy+ lifeSat+ MLQ+ c19NormShould+ c19NormDo+ c19IsStrict+ c19IsPunish+ c19IsOrg+ trustGovCtry+ trustGovState+ gender+ age+employstatus, data = hk_data)
+```
+#### c19ProSo03: The attributes that are the best predictors are PLRAC19, MLQ as seen by the Pr(>|t|) value and indicated by the * next to it.  **(Table 2.5)**
+#### The p-value is 0.01586, which means that there is evidence to suggest that at least one of the attributes in the model is significantly related to c19ProSo03.
+
+```{r, echo=TRUE, results='hide'}
+# Linear regression model to predict c19ProSo04 using the attributes for Hong Kong S.A.R. data
+hk_fit4 = lm(c19ProSo01~ affAnx+ affBor+ affCalm+ affContent+ affDepr+ affEnerg+ affExc+ affNerv+ affExh+ affInsp +affRel+ PLRAC19+ PLRAEco+ disc01+ disc02+ disc03+jbInsec01+ jbInsec02+ jbInsec03+ jbInsec04+ PFS01+PFS02+PFS03+ fail01+fail02+fail03+ happy+ lifeSat+ MLQ+ c19NormShould+ c19NormDo+ c19IsStrict+ c19IsPunish+ c19IsOrg+ trustGovCtry+ trustGovState+ gender+ age+employstatus, data = hk_data)
+```
+#### c19ProSo04: The attributes that are the best predictors are PLRAC19, c19NormShould as seen by the Pr(>|t|) value and indicated by the * next to it. **(Table 2.6)**
+#### The p-value is 0.01586, which means that there is evidence to suggest that at least one of the attributes in the model is significantly related to c19ProSo03.
+
+## **Q2c**
+
+```{r, echo=TRUE, results='hide'}
+# Linear regression model to predict c19ProSo01 using the attributes for Rest of the world data
+other_fit1 = lm(c19ProSo01~ affAnx+ affBor+ affCalm+ affContent+ affDepr+ affEnerg+ affExc+ affNerv+ affExh+ affInsp +affRel+ PLRAC19+ PLRAEco+ disc01+ disc02+ disc03+jbInsec01+ jbInsec02+ jbInsec03+ jbInsec04+ PFS01+PFS02+PFS03+ fail01+fail02+fail03+ happy+ lifeSat+ MLQ+ c19NormShould+ c19NormDo+ c19IsStrict+ c19IsPunish+ c19IsOrg+ trustGovCtry+ trustGovState+ gender+ age+employstatus, data = other_data)
+```
+#### C19ProSo01: Many of the attributes can be seen as very good predictors of the pro-social attribute C19ProSo01, namely examples:affExc, PLRAC19, disc02, MLQ etc... **(Table 2.7)**
+#### The multiple R-squared value of 0.09621 and adjusted R-squared value of 0.09532 indicate that only a small proportion of the variability in C19ProSo01 can be explained by the predictor variables. A very low p-value (< 2.2e-16) suggests that at least one of the predictor variables is significantly associated with C19ProSo01.
+
+```{r, echo=TRUE, results='hide'}
+# Linear regression model to predict c19ProSo02 using the attributes for Rest of the world data
+other_fit2 = lm(c19ProSo02~ affAnx+ affBor+ affCalm+ affContent+ affDepr+ affEnerg+ affExc+ affNerv+ affExh+ affInsp +affRel+ PLRAC19+ PLRAEco+ disc01+ disc02+ disc03+jbInsec01+ jbInsec02+ jbInsec03+ jbInsec04+ PFS01+PFS02+PFS03+ fail01+fail02+fail03+ happy+ lifeSat+ MLQ+ c19NormShould+ c19NormDo+ c19IsStrict+ c19IsPunish+ c19IsOrg+ trustGovCtry+ trustGovState+ gender+ age+employstatus, data = other_data)
+```
+#### C19ProSo02: Many of the attributes can be seen as very good predictors of the pro-social attribute C19ProSo02, namely examples: affAnx, disc02, disc03, lifeSat, MLQ, c19NormShould, trustGovState, age etc... This can be identified by the lowest values for Pr(>|t|) **(Table 2.8)**
+#### The F-statistic suggests that the model provides a statistically significant fit to the data. Finally, the p-value of less than 2.2e-16 indicates strong evidence against the null hypothesis.
+
+```{r, echo=TRUE, results='hide'}
+# Linear regression model to predict c19ProSo03 using the attributes for Rest of the world data
+other_fit3 = lm(c19ProSo03~ affAnx+ affBor+ affCalm+ affContent+ affDepr+ affEnerg+ affExc+ affNerv+ affExh+ affInsp +affRel+ PLRAC19+ PLRAEco+ disc01+ disc02+ disc03+jbInsec01+ jbInsec02+ jbInsec03+ jbInsec04+ PFS01+PFS02+PFS03+ fail01+fail02+fail03+ happy+ lifeSat+ MLQ+ c19NormShould+ c19NormDo+ c19IsStrict+ c19IsPunish+ c19IsOrg+ trustGovCtry+ trustGovState+ gender+ age+employstatus, data = other_data)
+```
+#### C19ProSo03: Many of the attributes can be seen as very good predictors of the pro-social attribute C19ProSo03, namely examples: disc02, disc03, lifeSat, c19NormShould, c19NormDo, c19IsOrg, trustGovState, age etc... This can be identified by the lowest values for Pr(>|t|) **(Table 2.9)**
+#### the F-statistic is 112.1 on 39 and 39763 degrees of freedom, indicating that the model fits the data better than a null model with no predictor variables. The p-value is < 2.2e-16, which is very small, indicating strong evidence against the null hypothesis.
+
+```{r, echo=True, results='hide'}
+# Linear regression model to predict c19ProSo04 using the attributes for Rest of the world data
+other_fit4 = lm(c19ProSo04~ affAnx+ affBor+ affCalm+ affContent+ affDepr+ affEnerg+ affExc+ affNerv+ affExh+ affInsp +affRel+ PLRAC19+ PLRAEco+ disc01+ disc02+ disc03+jbInsec01+ jbInsec02+ jbInsec03+ jbInsec04+ PFS01+PFS02+PFS03+ fail01+fail02+fail03+ happy+ lifeSat+ MLQ+ c19NormShould+ c19NormDo+ c19IsStrict+ c19IsPunish+ c19IsOrg+ trustGovCtry+ trustGovState+ gender+ age+employstatus, data = other_data)
+```
+#### C19ProSo04: Many of the attributes can be seen as very good predictors of the pro-social attribute C19ProSo04, namely examples:PLRAC19, disc02, jbInsec02, lifeSat, c19NormShould etc... **(Table 2.10)**
+#### In this case, the p-value is less than 0.05, suggesting strong evidence against the null hypothesis, and supporting the conclusion that the model has significant predictive power.
+
+
+#### Comparing this analysis of the regression model, we can see that the model made using data from the other countries fits a lot better than that of the focus country (Hong Kong S.A.R.) and has a lot more significant predictors. This can be due to the difference in the volume of data available when comparing the 2 groups as one consists of only the focus country (Hong Kong S.A.R.) and the other consists of hundreds others and a lot more data.
+
+
+# **Q3**
+#### select columns from the original dataset which would be used for indicating the social, economic, health and political indicators and then **(Table 3.1 & Table 3.2)** 
+```{r}
+# Create a dataframe using only relevant columns to be used for clustering for HK Data
+hk_cluster = select(hk_data, disc01, disc02, disc03, PFS01, PFS02, PFS03, fail01, fail02, fail03, happy, lifeSat, MLQ, trustGovCtry, trustGovState, coded_country, c19ProSo01, c19ProSo02, c19ProSo03, c19ProSo04)
+
+# Create a dataframe using only relevant columns to be used for clustering for Rest of Data
+other_cluster = select(other_data, disc01, disc02, disc03, PFS01, PFS02, PFS03, fail01, fail02, fail03, happy, lifeSat, MLQ, trustGovCtry, trustGovState, coded_country, c19ProSo01, c19ProSo02, c19ProSo03, c19ProSo04)
+```
+
+#### Group others by countries
+```{r}
+# Group others by countries
+grouped_countries <- other_cluster %>% group_by(coded_country)
+```
+
+
+```{r, echo = TRUE, results='hide'}
+# k-means cluster for HK Data using all attributes except coded country and Corona ProSocial
+hk_cluster[,1:14]=scale(hk_cluster[,1:14])
+hk_cluster$coded_country = factor(hk_cluster$coded_country)
+
+set.seed(9999)
+hk_cluster2= hk_cluster
+hk_cluster2[,1:14]=scale(hk_cluster2[,1:14])
+hk_clusterfit = kmeans(hk_cluster2[,1:14],7, nstart = 20)
+
+T1 = table(actual = hk_cluster$coded_country, fitted = hk_clusterfit$cluster)
+T1
+
+# k-means cluster for Other Data using all attributes except coded country and Corona ProSocial
+other_cluster2 <- kmeans(grouped_countries[,1:14],7,nstart=20)
+grouped_countries$coded_country = factor(grouped_countries$coded_country)
+
+set.seed(9999)
+other_cluster2= other_cluster
+other_cluster2[,1:14]=scale(other_cluster2[,1:14])
+other_clusterfit = kmeans(other_cluster2[,1:14],7, nstart = 20)
+
+T2 = table(actual = other_cluster$coded_country, fitted = other_clusterfit$cluster)
+#T2 = as.data.frame.matrix(T2) 
+T2
+
+```
+
+#### The indicators used to identify social, economic, health and political attributes are as follows: Societal Discontent: disc01, disc02, disc03, Perceived Financial Strain: PFS01, PFS02, PFS03, Disempowerment: fail01, fail02, fail03, Life Satisfaction: happy, lifeSat, MLQ, Trust in GovernmenttrustGovCtry, trustGovState.
+
+#### Singapore, Taiwan, South Korea, Japan **(Table 3.3)**
+#### These countries are similar to Hong Kong S.A.R. based on their economic, social, and political indicators. They all belong to the same cluster as Hong Kong S.A.R. in both the k-means clustering analyses**(Table 3.3)** & **(Table 3.4)**, indicating that they have similar patterns of development across these indicators.
+
+
+
+# Q3b
+#### For Hong Kong, Looking at the absolute values of the coefficients for each attribute, the attributes that look like the strongest predictors are fail02, trustGovCtry, trustGovState, fail03, disc02. **(Table 3.7)**
+#### For Similar Countries, it can be seen that cluster 4 has much lower values for disc01, disc02, and PFS01 than the other clusters. Cluster 5, on the other hand, has much higher values for these variables. This suggests that these variables are strong predictors of the clustering.**(Table 3.8)** **(Image 3.9)**
+
+```{r,echo=TRUE, results='hide'}
+# Subset the similar countries
+similar_countries <- subset(other_cluster2, coded_country %in% c("Singapore",  "Taiwan", "South Korea", "Japan"))
+set.seed(9999)
+similar_countries2= similar_countries
+# Scale the data
+similar_countries2[,1:14]=scale(similar_countries2[,1:14])
+# Use k-means clustering for similar countries data.
+similar_countriesfit = kmeans(similar_countries2[,1:14],7, nstart = 20)
+
+T3 = table(actual = similar_countries2$coded_country, fitted = similar_countriesfit$cluster)
+T3
+
+hk_clusterfit$centers
+similar_countriesfit$centers
+```
+#### Comparison of similarity and differences between results:
+#### Fo Hong Kong Data, in Question 2c, the strongest predictors were identified as PFS03, PFS01, fail01, and trustGovState. In this question, the strongest predictors are identified as fail02, trustGovCtry, trustGovState, fail03, and disc02. The fact that trustGovState appears in both lists suggests that it may be a particularly important predictor in the case of Hong Kong S.A.R. data.
+
+#### For Similar Countries, in Question 2c, the strongest predictors were identified as PLRAC19, disc02, jbInsec02, lifeSat, c19NormShould. In this question, the strongest predictors are identified as disc01, disc02, and PFS01. We can see that they are different in terms of the variables identified as strongest predictors.
+
+#### Better Match?
+#### Overall, there are discrepancies between the predictors identified by each group, even though both groups identified some significant predictors for pro-social views in the focus country. While cluster 3(b) contains one predictor that wasn't found in the focus country, group 2(c) contains several predictors that weren't found there. Therefore, neither group provides a perfect match to the important attributes for predicting pro-social attitudes in the focus country.
+
+
+
+
+# Appendix
+
+# **Q1**
+## Table 1.1: Head of Base Data
+```{r, echo=FALSE}
+head(cvbase)
+```
+
+
+## Table 1.2: Structure of Data
+```{r, echo=FALSE}
+str(cvbase)
+```
+
+
+## Table 1.3: Summary of Data
+```{r, echo=FALSE}
+summary(cvbase)
+```
+
+## Table 1.4: Summary of Manipulated & Cleaned Data
+```{r, echo=FALSE}
+summary(cvbase2)
+```
+
+## Image 1.5: Boxplot of Numerical Attributes Likelihood
+```{r, echo=FALSE}
+likelihood <- cvbase %>% select(c(PLRAC19, PLRAEco))
+boxplot(likelihood, las = 2, main="Likelihood")
+```
+
+## Image 1.6: Boxplot of Numerical Attributes Societal Discontent
+```{r, echo=FALSE}
+societal_discontent <- cvbase %>% select(c(disc01, disc02, disc03))
+boxplot(societal_discontent, las = 2, main="Societal Discontent")
+```
+
+## Image 1.7: Boxplot of Numerical Attributes Job Insecurity
+```{r, echo=FALSE}
+job_insecurity <- cvbase %>% select(c(jbInsec01, jbInsec02, jbInsec03, jbInsec04))
+boxplot(job_insecurity, las = 2, main="Job Insecurity")
+```
+
+## Image 1.8: Boxplot of Numerical Attributes Employ Status
+```{r, echo=FALSE}
+employ_status <- cvbase %>% select(c(employstatus_1,employstatus_2, employstatus_3,employstatus_4,employstatus_5,employstatus_6,employstatus_7,employstatus_8,employstatus_9,employstatus_10,))
+boxplot(employ_status, las = 2, main="Employment Status")
+```
+
+## Image 1.9: Boxplot of Numerical Attributes Perceived Financial Strain
+```{r, echo=FALSE}
+pfs <- cvbase %>% select(c(PFS01,PFS02,PFS03))
+boxplot(pfs, las = 2, main="Perceived Financial
+Strain")
+```
+
+## Image 1.10: Boxplot of Numerical Attributes Disempowerment
+```{r, echo=FALSE}
+fail <- cvbase %>% select(c(fail01,fail02,fail03))
+boxplot(fail, las = 2, main="Disempowerment")
+```
+
+## Image 1.11: Boxplot of Numerical Attributes Life Satisfaction
+```{r, echo=FALSE}
+lifesat <- cvbase %>% select(c(happy, lifeSat, MLQ))
+boxplot(lifesat, las = 2, main="Life Satisfaction")
+```
+
+## Image 1.12: Boxplot of Numerical Attributes Corona ProSocial Behavior
+```{r, echo=FALSE}
+cpsb <- cvbase %>% select(c(c19ProSo01,c19ProSo02,c19ProSo03,c19ProSo04))
+boxplot(cpsb, las = 2, main="Corona ProSocial
+Behavior")
+```
+
+## Image 1.13: Boxplot of Numerical Attributes Other Attributes
+```{r, echo=FALSE}
+other <- cvbase %>% select(c(trustGovCtry, trustGovState, gender, age))
+boxplot(other, las = 2, main="Other")
+```
+
+## Image 1.14: Boxplot of New Numerical Attribute Employment Status
+```{r, echo=FALSE}
+boxplot(cvbase2$employstatus, las = 2, main="Employment Status")
+```
+
+# **Q2**
+
+## Table 2.1: Unique countries 
+```{r}
+unique(cvbase2$coded_country)
+```
+
+## Table 2.2: Tally of Data by countries
+```{r}
+group = cvbase2 %>% group_by(coded_country) %>%
+  tally()
+group
+```
+
+## Table 2.3: Summary of Linear Regression Model for C19ProSo01 for HK Data
+```{r, echo=FALSE}
+summary(hk_fit1)
+```
+
+## Table 2.4: Summary of Linear Regression Model for C19ProSo02 for HK Data
+```{r, echo=FALSE}
+summary(hk_fit2)
+```
+
+
+## Table 2.5: Summary of Linear Regression Model for C19ProSo03 for HK Data
+```{r, echo=FALSE}
+summary(hk_fit3)
+```
+
+## Table 2.6: Summary of Linear Regression Model for C19ProSo04 for HK Data
+```{r, echo=FALSE}
+summary(hk_fit4)
+```
+
+## Table 2.7: Summary of Linear Regression Model for C19ProSo01 for Other Data
+```{r, echo=FALSE}
+summary(other_fit1)
+```
+
+## Table 2.8: Summary of Linear Regression Model for C19ProSo02 for Other Data
+```{r, echo=FALSE}
+summary(other_fit2)
+```
+
+## Table 2.9: Summary of Linear Regression Model for C19ProSo03 for Other Data
+```{r, echo=FALSE}
+summary(other_fit3)
+```
+
+## Table 2.10: Summary of Linear Regression Model for C19ProSo04 for Other Data
+```{r, echo=FALSE}
+summary(other_fit4)
+```
+
+# **Q3**
+## Table 3.1: Relevant data for clustering
+```{r, echo=FALSE}
+hk_cluster
+```
+
+## Table 3.2
+```{r, echo=FALSE}
+other_cluster
+```
+
+# Table of values used for clustering
+## Table 3.3
+```{r, echo=FALSE}
+T1
+```
+
+## Table 3.4: 
+```{r, echo=FALSE}
+T2
+```
+
+
+## Image 3.5: Plot for clusters for Corona ProSocial Behavior for HK Data
+```{r, echo=FALSE}
+ggplot(hk_cluster,aes(coded_country,c19ProSo01, color =factor(hk_clusterfit$cluster)))+geom_point() +  geom_jitter(width = 0.01)
+ggplot(hk_cluster,aes(coded_country, c19ProSo02, color =factor(hk_clusterfit$cluster)))+geom_point() + geom_jitter(width = 0.01)
+ggplot(hk_cluster,aes(coded_country, c19ProSo03, color =factor(hk_clusterfit$cluster)))+geom_point() + geom_jitter(width = 0.01)
+ggplot(hk_cluster,aes(coded_country, c19ProSo04, color =factor(hk_clusterfit$cluster)))+geom_point() + geom_jitter(width = 0.01)
+```
+
+## Image 3.6: Plot for clusters for Corona ProSocial Behavior for Other Data
+```{r, echo=FALSE}
+ggplot(other_cluster,aes(coded_country,c19ProSo01, color =factor(other_clusterfit$cluster)))+geom_point() +  geom_jitter(width = 0.01)
+ggplot(other_cluster,aes(coded_country,c19ProSo02, color =factor(other_clusterfit$cluster)))+geom_point() +  geom_jitter(width = 0.01)
+ggplot(other_cluster,aes(coded_country,c19ProSo03, color =factor(other_clusterfit$cluster)))+geom_point() +  geom_jitter(width = 0.01)
+ggplot(other_cluster,aes(coded_country,c19ProSo04, color =factor(other_clusterfit$cluster)))+geom_point() +  geom_jitter(width = 0.01)
+```
+## Table 3.7: Analysis of centroid values for Hong Kong Cluster
+```{r, echo=FALSE}
+hk_clusterfit$centers
+```
+
+## Table 3.8: Analysis of centroid values for Similar Countries Cluster
+```{r, echo=FALSE}
+similar_countriesfit$centers
+```
+
+
+## Image 3.9: Plot for clusters for Corona ProSocial Behavior for Similar Countries.
+```{r, echo=FALSE}
+ggplot(similar_countries2,aes(coded_country,c19ProSo01, color =factor(similar_countriesfit$cluster)))+geom_point() +  geom_jitter(width = 0.01)
+ggplot(similar_countries2,aes(coded_country,c19ProSo02, color =factor(similar_countriesfit$cluster)))+geom_point() +  geom_jitter(width = 0.01)
+ggplot(similar_countries2,aes(coded_country,c19ProSo03, color =factor(similar_countriesfit$cluster)))+geom_point() +  geom_jitter(width = 0.01)
+ggplot(similar_countries2,aes(coded_country,c19ProSo04, color =factor(similar_countriesfit$cluster)))+geom_point() +  geom_jitter(width = 0.01)
+
+```
+## Table of values used for clustering
+## Table 3.10
+```{r, echo=FALSE}
+T3
+```
+
